@@ -71,22 +71,23 @@ byte _sensCount = 0;
 unsigned long _lastDisplayUpdated = 0;
 
 struct eeStruct {
-  byte amb1[8];
-  byte amb2[8];
-  byte boiler1[8];
-  byte boiler2[8];
-  byte boiler3[8];
-  byte hPipe1[8];
-  byte hPipe2[8];
-  byte floor1[8];
-  byte floor2[8];
-  byte water1[8];
+  byte sens_a[8];
+  byte sens_b[8];
+  byte sens_c[8];
+  byte sens_d[8];
+  byte sens_e[8];
+  byte sens_f[8];
+  byte sens_g[8];
+  byte sens_h[8];
+  byte sens_i[8];
+  byte sens_j[8];
 };
 typedef struct eeStruct ee_t;
 ee_t ee;
 
 #define PIN_MEM 10
-Bounce _memPin = Bounce(); 
+#define PIN_RESET 9
+Bounce _memPin = Bounce();
 
 void setup(void) {
   pinMode(13, OUTPUT);
@@ -95,7 +96,15 @@ void setup(void) {
   _memPin.attach(PIN_MEM);
   _memPin.interval(1000); // interval in ms
 
+  pinMode(PIN_RESET, INPUT_PULLUP);
+  delay(10);
+    
   Serial.begin(9600);
+
+  if (digitalRead(PIN_RESET) == LOW) {
+   resetEEPROM(); 
+   Serial.println("EEPROM reset");
+  }
 
   searchSensors();
   EEPROM_readAnything(0, &ee, sizeof(ee));
@@ -114,7 +123,7 @@ int lastMemValue = HIGH;
 void updateMem()
 {
   _memPin.update();
-
+  
   // Get the updated value :
   int value = _memPin.read();
 
@@ -129,6 +138,13 @@ void updateMem()
   }
 
   lastMemValue = value;
+}
+
+void resetEEPROM() 
+{
+  byte x[80];
+  memset(x, 0, 80);
+  EEPROM_writeAnything(0, x, 80);
 }
 
 void updateDisplay()
@@ -151,49 +167,54 @@ void updateDisplay()
       char temp[10];
       char buf[22];
 
-      String s = "Amb  : ";
-      dtostrf(safeGetTemp(ee.amb1), 3, 1, temp);
-      s += temp;
-      dtostrf(safeGetTemp(ee.amb2), 3, 1, temp);
-      s += "/";
+      String s = "A=";
+      dtostrf(safeGetTemp(ee.sens_a), 7, 2, temp);
+      s += temp;      
+      s += "  B=";
+      dtostrf(safeGetTemp(ee.sens_b), 7, 2, temp);
       s += temp;
       s.toCharArray(buf, 22);
+      Serial.println(buf);
       u8g.drawStr(1,9, buf);
 
-      s = "Boil : ";
-      dtostrf(safeGetTemp(ee.boiler1), 3, 1, temp);
-      s += temp;      
-      dtostrf(safeGetTemp(ee.boiler2), 3, 1, temp);
-      s += "/";
-      s += temp;
-      dtostrf(safeGetTemp(ee.boiler3), 3, 1, temp);
-      s += "/";
+      s = "C=";
+      dtostrf(safeGetTemp(ee.sens_c), 7, 2, temp);
+      s += temp;            
+      s += "  D=";
+      dtostrf(safeGetTemp(ee.sens_d), 7, 2, temp);
       s += temp;
       s.toCharArray(buf, 22);
+      Serial.println(buf);
       u8g.drawStr(1,23, buf);
 
-      s = "Hpipe: ";
-      dtostrf(safeGetTemp(ee.hPipe1), 3, 1, temp);
-      s += temp;      
-      dtostrf(safeGetTemp(ee.hPipe2), 3, 1, temp);
-      s += "/";
+      s = "E=";
+      dtostrf(safeGetTemp(ee.sens_e), 7, 2, temp);
+      s += temp;
+      s += "  F=";
+      dtostrf(safeGetTemp(ee.sens_f), 7, 2, temp);
       s += temp;
       s.toCharArray(buf, 22);
+      Serial.println(buf);
       u8g.drawStr(1, 37, buf);
 
-      s = "Floor: ";
-      dtostrf(safeGetTemp(ee.floor1), 3, 1, temp);
-      s += temp;      
-      dtostrf(safeGetTemp(ee.floor2), 3, 1, temp);
-      s += "/";
+      s = "G=";
+      dtostrf(safeGetTemp(ee.sens_g), 7, 2, temp);
+      s += temp;
+      s += "  H=";
+      dtostrf(safeGetTemp(ee.sens_h), 7, 2, temp);
       s += temp;
       s.toCharArray(buf, 22);
+      Serial.println(buf);
       u8g.drawStr(1, 51, buf);
 
-      s = "Water: ";
-      dtostrf(safeGetTemp(ee.water1), 3, 1, temp);
-      s += temp; 
+      s = "I=";
+      dtostrf(safeGetTemp(ee.sens_i), 7, 2, temp);
+      s += temp;
+      s += "  J=";
+      dtostrf(safeGetTemp(ee.sens_j), 7, 2, temp);
+      s += temp;
       s.toCharArray(buf, 22);
+      Serial.println(buf);
       u8g.drawStr(1, 64, buf);
 
       u8g.setColorIndex(1);
@@ -213,7 +234,6 @@ void searchSensors()
 
   for (int n = 0; n < 3; n++)
   {
-    _ds[n].reset_search();
     byte addr[8];
     while (_ds[n].search(addr))
     {
@@ -235,63 +255,65 @@ void searchSensors()
 
   Serial.print("Found ");
   Serial.println(_sensCount);  
+
+  delay(250);
 }
 
 boolean isValidBinding(int index)
 {
-  return (indexOfAddress(ee.amb1) == index
-    || indexOfAddress(ee.amb2) == index
-    || indexOfAddress(ee.boiler1) == index
-    || indexOfAddress(ee.boiler2) == index
-    || indexOfAddress(ee.boiler3) == index
-    || indexOfAddress(ee.hPipe1) == index
-    || indexOfAddress(ee.hPipe2) == index
-    || indexOfAddress(ee.floor1) == index
-    || indexOfAddress(ee.floor2) == index
-    || indexOfAddress(ee.water1) == index);
+  return (indexOfAddress(ee.sens_a) == index
+    || indexOfAddress(ee.sens_b) == index
+    || indexOfAddress(ee.sens_c) == index
+    || indexOfAddress(ee.sens_d) == index
+    || indexOfAddress(ee.sens_e) == index
+    || indexOfAddress(ee.sens_f) == index
+    || indexOfAddress(ee.sens_g) == index
+    || indexOfAddress(ee.sens_h) == index
+    || indexOfAddress(ee.sens_i) == index
+    || indexOfAddress(ee.sens_j) == index);
 }
 
 void memorizeInvalidBinding(int index)
 {
-  if (indexOfAddress(ee.amb1) < 0)
+  if (indexOfAddress(ee.sens_a) < 0)
   {
-    memcpy(ee.amb1, _sens[index], 8);
+    memcpy(ee.sens_a, _sens[index], 8);
   }
-  else if (indexOfAddress(ee.amb2) < 0)
+  else if (indexOfAddress(ee.sens_b) < 0)
   {
-    memcpy(ee.amb2, _sens[index], 8);
+    memcpy(ee.sens_b, _sens[index], 8);
   }
-  else if (indexOfAddress(ee.boiler1) < 0)
+  else if (indexOfAddress(ee.sens_c) < 0)
   {
-    memcpy(ee.boiler1, _sens[index], 8);
+    memcpy(ee.sens_c, _sens[index], 8);
   }
-  else if (indexOfAddress(ee.boiler2) < 0)
+  else if (indexOfAddress(ee.sens_d) < 0)
   {
-    memcpy(ee.boiler2, _sens[index], 8);
+    memcpy(ee.sens_d, _sens[index], 8);
   }
-  else if (indexOfAddress(ee.boiler3) < 0)
+  else if (indexOfAddress(ee.sens_e) < 0)
   {
-    memcpy(ee.boiler3, _sens[index], 8);
+    memcpy(ee.sens_e, _sens[index], 8);
   }
-  else if (indexOfAddress(ee.hPipe1) < 0)
+  else if (indexOfAddress(ee.sens_f) < 0)
   {
-    memcpy(ee.hPipe1, _sens[index], 8);
+    memcpy(ee.sens_f, _sens[index], 8);
   }
-  else if (indexOfAddress(ee.hPipe2) < 0)
+  else if (indexOfAddress(ee.sens_g) < 0)
   {
-    memcpy(ee.hPipe2, _sens[index], 8);
+    memcpy(ee.sens_g, _sens[index], 8);
   }
-  else if (indexOfAddress(ee.floor1) < 0)
+  else if (indexOfAddress(ee.sens_h) < 0)
   {
-    memcpy(ee.floor1, _sens[index], 8);
+    memcpy(ee.sens_h, _sens[index], 8);
   }
-  else if (indexOfAddress(ee.floor2) < 0)
+  else if (indexOfAddress(ee.sens_i) < 0)
   {
-    memcpy(ee.floor2, _sens[index], 8);
+    memcpy(ee.sens_i, _sens[index], 8);
   }
-  else if (indexOfAddress(ee.water1) < 0)
+  else if (indexOfAddress(ee.sens_j) < 0)
   {
-    memcpy(ee.water1, _sens[index], 8);
+    memcpy(ee.sens_j, _sens[index], 8);
   }
 }
 
@@ -300,53 +322,53 @@ void memorizeBindings()
   boolean hasInvalidBindings = true;
   while (hasInvalidBindings) 
   {
+    hasInvalidBindings = false;
     for (int i = 0; i < _sensCount; i++)
     {
       if (!isValidBinding(i))
       {
         memorizeInvalidBinding(i);
+        hasInvalidBindings = true;
         break;
       }
     }
-    
-    hasInvalidBindings = false;
   }
 }
 
 void setDefaultBindings()
 {
-  byte empty[8] = {
-    0                  };
+  byte empty[8];
+  memset(empty, 0, 8);
 
-  if (validateAddr(ee.amb1))
-    memcpy(ee.amb1, _sensCount >= 1 ? _sens[0] : empty, 8);
+  if (!validateAddr(ee.sens_a))
+    memcpy(ee.sens_a, _sensCount >= 1 ? _sens[0] : empty, 8);
 
-  if (!validateAddr(ee.amb2))
-    memcpy(ee.amb2, _sensCount >= 2 ? _sens[1] : empty, 8);
+  if (!validateAddr(ee.sens_b))
+    memcpy(ee.sens_b, _sensCount >= 2 ? _sens[1] : empty, 8);
 
-  if (!validateAddr(ee.boiler1))
-    memcpy(ee.boiler1, _sensCount >= 3 ? _sens[2] : empty, 8);
+  if (!validateAddr(ee.sens_c))
+    memcpy(ee.sens_c, _sensCount >= 3 ? _sens[2] : empty, 8);
 
-  if (!validateAddr(ee.boiler2))
-    memcpy(ee.boiler2, _sensCount >= 4 ? _sens[3] : empty, 8);  
+  if (!validateAddr(ee.sens_d))
+    memcpy(ee.sens_d, _sensCount >= 4 ? _sens[3] : empty, 8);  
 
-  if (!validateAddr(ee.boiler3))
-    memcpy(ee.boiler3, _sensCount >= 5 ? _sens[4] : empty, 8);
+  if (!validateAddr(ee.sens_e))
+    memcpy(ee.sens_e, _sensCount >= 5 ? _sens[4] : empty, 8);
 
-  if (!validateAddr(ee.hPipe1))
-    memcpy(ee.hPipe1, _sensCount >= 6 ? _sens[5] : empty, 8);
+  if (!validateAddr(ee.sens_f))
+    memcpy(ee.sens_f, _sensCount >= 6 ? _sens[5] : empty, 8);
 
-  if (!validateAddr(ee.hPipe2))
-    memcpy(ee.hPipe2, _sensCount >= 7 ? _sens[6] : empty, 8);
+  if (!validateAddr(ee.sens_g))
+    memcpy(ee.sens_g, _sensCount >= 7 ? _sens[6] : empty, 8);
 
-  if (!validateAddr(ee.floor1))
-    memcpy(ee.floor1, _sensCount >= 8 ? _sens[7] : empty, 8);
+  if (!validateAddr(ee.sens_h))
+    memcpy(ee.sens_h, _sensCount >= 8 ? _sens[7] : empty, 8);
 
-  if (!validateAddr(ee.floor2))
-    memcpy(ee.floor2, _sensCount >= 9 ? _sens[8] : empty, 8);
+  if (!validateAddr(ee.sens_i))
+    memcpy(ee.sens_i, _sensCount >= 9 ? _sens[8] : empty, 8);
 
-  if (!validateAddr(ee.water1))
-    memcpy(ee.water1, _sensCount >= 10 ? _sens[9] : empty, 8);
+  if (!validateAddr(ee.sens_j))
+    memcpy(ee.sens_j, _sensCount >= 10 ? _sens[9] : empty, 8);
 }
 
 boolean isEqualsAddr(const byte *x, const byte *y)
@@ -432,14 +454,15 @@ void updateTemp()
       }
 
       // convert the data to actual temperature
-      unsigned int raw = (data[1] << 8) | data[0];
       byte cfg = (data[4] & 0x60);
-      if (cfg == 0x00) raw = raw << 3;  // 9 bit resolution, 93.75 ms
-      else if (cfg == 0x20) raw = raw << 2; // 10 bit res, 187.5 ms
-      else if (cfg == 0x40) raw = raw << 1; // 11 bit res, 375 ms
-      // default is 12 bit resolution, 750 ms conversion time
 
-      _sensTemp[sensNum] = (float)raw / 16.0;
+      uint8_t resolution;
+      if (cfg == 0x00) resolution = 9;  // 9 bit resolution, 93.75 ms
+      else if (cfg == 0x20) resolution = 10; // 10 bit res, 187.5 ms
+      else if (cfg == 0x40) resolution = 11; // 11 bit res, 375 ms
+      else resolution = 12; // default is 12 bit resolution, 750 ms conversion time
+
+      _sensTemp[sensNum] = convertToCelsius(data[0], data[1], resolution);
       _sensLastUpdated[sensNum] = time;
 
       // release bus
@@ -447,6 +470,16 @@ void updateTemp()
       _sensRead = 0;
     }
   }
+}
+
+float convertToCelsius(int lowByte, int highByte, byte resolution)
+{
+  float quality[] = {0.5, 0.25, 0.125, 0.0625};
+  uint8_t shift[] = {3, 2, 1, 0};
+  int16_t raw = word(highByte, lowByte);
+  raw >>= shift[resolution - 9];
+
+  return raw * quality[resolution - 9];
 }
 
 unsigned long _lastMillis = 0;
